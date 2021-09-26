@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -14,10 +15,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.userslist.adapter.UsersAdapter;
 import com.example.userslist.databinding.ActivityMainBinding;
+import com.example.userslist.models.Server;
 import com.example.userslist.models.User;
 import com.example.userslist.util.InternetConBroadcastReceiver;
 import com.example.userslist.util.InternetConnection;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,16 +49,23 @@ public class MainActivity extends AppCompatActivity {
         binding.userListRecycler.setLayoutManager(layoutManager);
         binding.userListRecycler.setScrollContainer(false);
         binding.userListRecycler.setAdapter(adapter);
-        mainActivityLiveModel.userDataMutableLiveData.observe(this, userData -> {
+        mainActivityLiveModel.getServerData().observe(this, userData -> {
+            List<User> users = new ArrayList<>();
+            for (Server item :
+                    userData) {
+                Log.d(TAG, "onCreate: Json Data:--- " + item.getData());
+                users.add(new Gson().fromJson(item.getData(), User.class));
+            }
+
+            int count = userList.size();
             this.userList.clear();
-            this.userList.addAll(userData.getData());
-            adapter.notifyDataSetChanged();
+            this.userList.addAll(users);
+            adapter.notifyItemRangeChanged(count - 1, userData.size() - count);
         });
 
-        if (InternetConnection.isConnected(this)) {
-            mainActivityLiveModel.getUsersList();
-        } else
+        if (!InternetConnection.isConnected(this)) {
             toastMsg("No Internet");
+        }
 
         adapter.setOnClickItem((user, position, view) -> {
             Log.d(TAG, "onCreate: Item Click Id:-- " + user.get_id());
@@ -62,9 +74,10 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        binding.nextBtn.setOnClickListener(v -> mainActivityLiveModel.nextPage());
-        binding.preBtn.setOnClickListener(v -> mainActivityLiveModel.previousPage());
-        mainActivityLiveModel.getProgressBar().observe(this, aBoolean -> binding.progressBar.setVisibility(aBoolean ? View.VISIBLE : View.GONE));
+        mainActivityLiveModel.getProgressBar().observe(this, aBoolean -> {
+            binding.progressBar.setVisibility(aBoolean ? View.VISIBLE : View.GONE);
+            binding.swiperefresh.setRefreshing(aBoolean);
+        });
 
         internetConBroadcastReceiver.setOnConnection(new InternetConBroadcastReceiver.OnConnection() {
             @Override
@@ -76,11 +89,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onConnected() {
                 if (stat) {
-                    mainActivityLiveModel.getUsersList();
                     toastMsg("Internet Connected");
                 }
             }
         });
+
+        mainActivityLiveModel.getStatus().observe(this, this::toastMsg);
+
+        binding.userListRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
+
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                //Log.d(TAG, "onScrolled: Last Scrole Value :--- DX:-- "+dx+ "   DY:-- "+dy);
+
+                LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+
+                if (linearLayoutManager != null && linearLayoutManager.findLastCompletelyVisibleItemPosition() == userList.size() - 1) {
+                    //bottom of list!
+
+                    mainActivityLiveModel.nextPage();
+
+                }
+
+            }
+        });
+
+        binding.swiperefresh.setOnRefreshListener(() -> mainActivityLiveModel.refreshData());
+
     }
 
     @Override

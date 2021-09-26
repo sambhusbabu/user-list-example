@@ -3,10 +3,6 @@ package com.example.userslist;
 import android.util.Log;
 
 import com.example.userslist.models.User;
-import com.example.userslist.models.UserData;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;

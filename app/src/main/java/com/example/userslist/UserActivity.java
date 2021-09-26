@@ -56,6 +56,8 @@ public class UserActivity extends AppCompatActivity {
             }
         });
 
+        userActivityLiveModel.getStatus().observe(this, this::toastMsg);
+
     }
 
     @Override

@@ -1,35 +1,60 @@
 package com.example.userslist;
 
+import android.app.Application;
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
-import com.example.userslist.models.UserData;
+import com.example.userslist.models.Server;
 
-public class MainActivityLiveModel extends ViewModel implements MainRepo.DataReceive {
+import java.util.List;
 
-    MutableLiveData<UserData> userDataMutableLiveData = new MutableLiveData<>();
+public class MainActivityLiveModel extends AndroidViewModel implements MainRepo.DataReceive {
+
     MutableLiveData<String> status = new MutableLiveData<>();
     MutableLiveData<Boolean> progressBar = new MutableLiveData<>();
-    private MainRepo mainRepo = new MainRepo(this);
-    String pageNumber = "0";
+    private MainRepo mainRepo;
+    public static final String PREFS_NAME = "icom.example.userslist";
+    public static final String PREFS_PAGE_NUMBER = "page_number";
+    String pageNumber;
+    SharedPreferences sharedPreferences;
+    public MainActivityLiveModel(@NonNull Application application) {
+        super(application);
+        mainRepo = new MainRepo(this, application);
+        sharedPreferences = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE );
+        pageNumber = sharedPreferences.getString(PREFS_PAGE_NUMBER, "0");
+        getUsersList();
+
+    }
 
     public void getUsersList() {
         mainRepo.getUsersList(pageNumber);
         progressBar.setValue(true);
     }
+    public void refreshData() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(PREFS_PAGE_NUMBER, "0");
+        editor.apply();
+        pageNumber = "0";
+        mainRepo.deleteData();
+        getUsersList();
+    }
+
 
     public void nextPage() {
         pageNumber = "" + (Integer.parseInt(pageNumber) + 1);
-        getUsersList();
-    }
-    public void previousPage() {
-        pageNumber = "" + (Integer.parseInt(pageNumber) - 1);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(PREFS_PAGE_NUMBER, pageNumber);
+        editor.apply();
         getUsersList();
     }
 
-    public LiveData<UserData> getUserDataMutableLiveData() {
-        return userDataMutableLiveData;
+    public LiveData<List<Server>> getServerData() {
+        return mainRepo.getAllServerData();
     }
 
     public LiveData<String> getStatus() {
@@ -41,10 +66,8 @@ public class MainActivityLiveModel extends ViewModel implements MainRepo.DataRec
     }
 
     @Override
-    public void onDataReceive(UserData userData) {
-        userDataMutableLiveData.setValue(userData);
+    public void onDataReceive() {
         progressBar.setValue(false);
-
     }
 
     @Override

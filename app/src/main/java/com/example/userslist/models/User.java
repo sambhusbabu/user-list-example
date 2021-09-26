@@ -96,4 +96,13 @@ public class User implements Parcelable {
                 .into(view);
     }
 
+    @Override
+    public String toString() {
+        return "User{" +
+                "name='" + name + '\'' +
+                ", trips=" + trips +
+                ", _id='" + _id + '\'' +
+                ", airline=" + airline +
+                '}';
+    }
 }
